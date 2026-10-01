@@ -1,31 +1,161 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dropper Academy</title>
-<style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033}header{background:#1557d6;color:#fff;padding:16px 20px;font-size:22px;font-weight:800}.wrap{max-width:1000px;margin:22px auto;padding:0 15px}.card{background:#fff;padding:20px;border-radius:16px;box-shadow:0 4px 20px #0001;margin-bottom:16px}input,textarea,select{width:100%;padding:12px;border:1px solid #ccd2dc;border-radius:10px;margin:6px 0 12px;font:inherit}button{border:0;border-radius:10px;padding:11px 16px;background:#1557d6;color:#fff;font-weight:700;cursor:pointer;margin:3px}.alt{background:#e9eef8;color:#172033}.danger{background:#d92d20}.pill{display:inline-block;background:#eaf1ff;color:#1557d6;padding:6px 10px;border-radius:20px;font-size:12px;font-weight:700}.hidden{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}.muted{color:#667085}.option{border:2px solid #e2e6ed;padding:13px;border-radius:11px;margin:9px 0;cursor:pointer}.option.sel{border-color:#1557d6;background:#edf4ff}.timer{float:right;font-size:20px}.bar{height:8px;background:#e6eaf0;border-radius:9px;margin:14px 0;overflow:hidden}.bar i{display:block;height:100%;background:#1557d6;width:0}.palette{display:flex;flex-wrap:wrap;gap:5px}.q{width:38px;padding:8px;background:#e9eef8;color:#172033}.cur{background:#1557d6!important;color:#fff!important}.done{background:#c9dcff!important}.score{text-align:center;font-size:45px;font-weight:900;color:#1557d6}.notice{background:#fff7df;padding:12px;border-radius:10px}.error{color:#c62828;font-weight:700}.success{color:#16803c;font-weight:700}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:600px){.row{grid-template-columns:1fr}}</style></head>
-<body><header>🚀 Dropper Academy <span id="role" style="float:right;font-size:13px;font-weight:400">Student</span></header><div class="wrap">
-<section id="auth" class="card"><span class="pill">NEET • JEE • BOARDS</span><h1>Dropper Academy</h1><div id="authForms"><h2 id="authTitle">Student Login</h2><div id="nameWrap" class="hidden"><label>Full name</label><input id="name"></div><label>Email</label><input id="email" type="email"><label>Password</label><input id="password" type="password"><div id="msg"></div><button onclick="doLogin()">Login</button><button class="alt" onclick="toggleSignup()" id="signupBtn">Create Student Account</button></div></section>
-<section id="student" class="hidden"><div class="card"><button class="alt" onclick="logout()">Logout</button><h2>Student Dashboard</h2><p id="welcome" class="muted"></p></div><div id="tests" class="grid"></div></section>
-<section id="test" class="card hidden"><div><b id="qt"></b><span class="timer" id="timer"></span></div><div class="bar"><i id="progress"></i></div><div id="question"></div><div id="palette" class="palette"></div><button class="alt" onclick="prev()">Previous</button><button onclick="next()">Next</button><button class="danger" onclick="finish()">Submit Test</button></section>
-<section id="result" class="card hidden"><h2>Result 🎉</h2><div id="score" class="score"></div><p id="summary" style="text-align:center"></p><div id="analysis"></div><button onclick="showStudent()">Back to Dashboard</button></section>
-<section id="admin" class="hidden"><div class="card"><button class="alt" onclick="logout()">Logout</button><h2>Admin Dashboard</h2><p class="muted">Create tests and questions directly in Supabase.</p></div><div class="card"><h3>Create Test</h3><div class="row"><div><label>Title</label><input id="title" placeholder="The Living World — Test 1"></div><div><label>Subject</label><input id="subject" value="Biology"></div></div><div class="row"><div><label>Chapter</label><input id="chapter" placeholder="The Living World"></div><div><label>Duration (minutes)</label><input id="duration" type="number" value="20"></div></div><button onclick="createTest()">Create Test</button><div id="adminMsg"></div></div><div class="card"><h3>Your Tests</h3><div id="adminTests"></div></div><div id="questionEditor" class="card hidden"><h3>Add Question</h3><p id="selectedTestName" class="muted"></p><label>Question</label><textarea id="qtext" rows="3"></textarea><div class="row"><div><label>Option A</label><input id="oa"></div><div><label>Option B</label><input id="ob"></div><div><label>Option C</label><input id="oc"></div><div><label>Option D</label><input id="od"></div></div><div class="row"><div><label>Correct option</label><select id="correct"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></div><div><label>NCERT reference</label><input id="ncert"></div></div><label>Explanation</label><textarea id="explanation" rows="3"></textarea><button onclick="addQuestion()">Save Question</button><button class="alt" onclick="closeEditor()">Close</button></div></section>
-</div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script>
-const sb=supabase.createClient(window.DROPPER_CONFIG.SUPABASE_URL,window.DROPPER_CONFIG.SUPABASE_PUBLISHABLE_KEY);let current=null,qi=0,answers=[],seconds,timer,selectedTestId=null,isSignup=false;
-const $=id=>document.getElementById(id);function hideAll(){['auth','student','test','result','admin'].forEach(x=>$(x).classList.add('hidden'));}function msg(t,c='error'){ $('msg').innerHTML='<span class="'+c+'">'+t+'</span>'; }
-async function toggleSignup(){isSignup=!isSignup;$('authTitle').textContent=isSignup?'Create Student Account':'Student Login';$('nameWrap').classList.toggle('hidden',!isSignup);$('signupBtn').textContent=isSignup?'Back to Login':'Create Student Account';$('authForms').querySelector('button').textContent=isSignup?'Create Account':'Login';$('msg').innerHTML='';}
-async function doLogin(){let e=$('email').value.trim(),p=$('password').value;if(!e||!p)return msg('Enter email and password.');if(isSignup){let n=$('name').value.trim();if(!n)return msg('Enter your name.');let {error}=await sb.auth.signUp({email:e,password:p,options:{data:{full_name:n}}});if(error)return msg(error.message);msg('Account created. Check email if confirmation is enabled, then login.','success');isSignup=false;await toggleSignup();return;}let {error}=await sb.auth.signInWithPassword({email:e,password:p});if(error)return msg(error.message);await route();}
-async function logout(){await sb.auth.signOut();clearInterval(timer);hideAll();$('auth').classList.remove('hidden');$('role').textContent='Student';}
-async function route(){let {data:{user}}=await sb.auth.getUser();if(!user){hideAll();$('auth').classList.remove('hidden');return;}let {data:p}=await sb.from('profiles').select('full_name,role').eq('id',user.id).maybeSingle();if(p?.role==='admin')showAdmin(p,user);else showStudent(p,user);}
-async function showStudent(p,user){hideAll();$('student').classList.remove('hidden');$('role').textContent='Student';$('welcome').textContent='Welcome, '+(p?.full_name||user.email)+'!';let {data,error}=await sb.from('tests').select('*').eq('published',true).order('created_at',{ascending:false});if(error){$('tests').innerHTML='<div class="card error">'+error.message+'</div>';return;}$('tests').innerHTML=(data||[]).map(t=>`<div class="card"><span class="pill">${esc(t.subject)}</span><h3>${esc(t.title)}</h3><p class="muted">${esc(t.chapter||'')} • ${t.duration_minutes} min • +${t.positive_marks}/−${t.negative_marks}</p><button onclick="start('${t.id}')">Start Test</button></div>`).join('')||'<div class="card">No published tests yet.</div>';}
-async function showAdmin(p,user){hideAll();$('admin').classList.remove('hidden');$('role').textContent='Admin';await renderAdmin();}
-async function renderAdmin(){let {data,error}=await sb.from('tests').select('*').order('created_at',{ascending:false});if(error){$('adminTests').innerHTML='<p class="error">'+error.message+'</p>';return;}$('adminTests').innerHTML=(data||[]).map(t=>`<div style="padding:10px 0;border-bottom:1px solid #eee"><b>${esc(t.title)}</b><br><span class="muted">${esc(t.subject)} • ${t.published?'Published':'Draft'}</span><br><button onclick="openEditor('${t.id}','${esc(t.title).replaceAll("'",'&#39;')}')">Add Question</button><button onclick="togglePublish('${t.id}',${!t.published})">${t.published?'Unpublish':'Publish'}</button><button class="danger" onclick="deleteTest('${t.id}')">Delete</button></div>`).join('')||'No tests yet.';}
-async function createTest(){let {data:{user}}=await sb.auth.getUser();let {error}=await sb.from('tests').insert({title:$('title').value.trim()||'New Test',subject:$('subject').value.trim()||'Biology',chapter:$('chapter').value.trim(),duration_minutes:+$('duration').value||20,created_by:user.id}).select().single();if(error){$('adminMsg').innerHTML='<p class="error">'+error.message+'</p>';return;}$('adminMsg').innerHTML='<p class="success">Test created.</p>';await renderAdmin();}
-async function togglePublish(id,published){let {error}=await sb.from('tests').update({published}).eq('id',id);if(error)alert(error.message);else await renderAdmin();}
-async function deleteTest(id){if(!confirm('Delete this test and its questions?'))return;let {error}=await sb.from('tests').delete().eq('id',id);if(error)alert(error.message);else await renderAdmin();}
-function openEditor(id,name){selectedTestId=id;$('selectedTestName').textContent='Test: '+name;$('questionEditor').classList.remove('hidden');window.scrollTo(0,document.body.scrollHeight)}function closeEditor(){$('questionEditor').classList.add('hidden');selectedTestId=null}
-async function addQuestion(){if(!selectedTestId)return;let vals=[$('qtext').value.trim(),$('oa').value.trim(),$('ob').value.trim(),$('oc').value.trim(),$('od').value.trim()];if(vals.some(v=>!v))return alert('Fill question and all options.');let {data:old}=await sb.from('questions').select('question_order').eq('test_id',selectedTestId).order('question_order',{ascending:false}).limit(1);let order=(old?.[0]?.question_order||0)+1;let {error}=await sb.from('questions').insert({test_id:selectedTestId,question_text:vals[0],option_a:vals[1],option_b:vals[2],option_c:vals[3],option_d:vals[4],correct_option:+$('correct').value,ncert_reference:$('ncert').value.trim(),explanation:$('explanation').value.trim(),question_order:order});if(error)alert(error.message);else{alert('Question saved.');['qtext','oa','ob','oc','od','ncert','explanation'].forEach(id=>$(id).value='');}}
-async function start(id){let {data:t,error}=await sb.from('tests').select('*').eq('id',id).single();if(error)return alert(error.message);let {data:qs,error:e2}=await sb.from('questions').select('*').eq('test_id',id).order('question_order');if(e2)return alert(e2.message);if(!qs?.length)return alert('This test has no questions yet.');current={...t,questions:qs};qi=0;answers=Array(qs.length).fill(null);seconds=t.duration_minutes*60;hideAll();$('test').classList.remove('hidden');clearInterval(timer);timer=setInterval(()=>{seconds--;updateTimer();if(seconds<=0)finish()},1000);renderQ();}
-function updateTimer(){$('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')}
-function renderQ(){let x=current.questions[qi];$('qt').textContent='Question '+(qi+1)+' of '+current.questions.length;$('progress').style.width=((qi+1)/current.questions.length*100)+'%';let opts=[x.option_a,x.option_b,x.option_c,x.option_d];$('question').innerHTML='<h2>'+esc(x.question_text)+'</h2>'+opts.map((o,i)=>`<div class="option ${answers[qi]===i?'sel':''}" onclick="pick(${i})">${String.fromCharCode(65+i)}. ${esc(o)}</div>`).join('');$('palette').innerHTML=current.questions.map((_,i)=>`<button class="q ${i===qi?'cur':''} ${answers[i]!==null?'done':''}" onclick="qi=${i};renderQ()">${i+1}</button>`).join('');updateTimer();}
-function pick(i){answers[qi]=i;renderQ()}function next(){if(qi<current.questions.length-1){qi++;renderQ()}}function prev(){if(qi>0){qi--;renderQ()}}
-async function finish(){clearInterval(timer);let c=0,w=0,u=0;current.questions.forEach((x,i)=>answers[i]===null?u++:answers[i]===x.correct_option?c++:w++);let score=c*current.positive_marks-w*current.negative_marks;let {data:{user}}=await sb.auth.getUser();let {data:a,error}=await sb.from('attempts').insert({user_id:user.id,test_id:current.id,score,correct_count:c,wrong_count:w,unattempted_count:u}).select().single();if(error)return alert(error.message);let rows=current.questions.map((x,i)=>({attempt_id:a.id,question_id:x.id,selected_option:answers[i],is_correct:answers[i]!==null&&answers[i]===x.correct_option}));await sb.from('attempt_answers').insert(rows);hideAll();$('result').classList.remove('hidden');$('score').textContent=score+' / '+(current.questions.length*current.positive_marks);$('summary').textContent='Correct: '+c+' • Wrong: '+w+' • Unattempted: '+u;$('analysis').innerHTML=current.questions.map((x,i)=>{let o=[x.option_a,x.option_b,x.option_c,x.option_d];return `<div style="padding:12px;border-bottom:1px solid #eee"><b>Q${i+1}. ${esc(x.question_text)}</b><br>Your answer: ${answers[i]===null?'Not attempted':esc(o[answers[i]])}<br>Correct: <b>${esc(o[x.correct_option])}</b>${x.explanation?'<br><span class="muted">'+esc(x.explanation)+'</span>':''}${x.ncert_reference?'<br><span class="muted">NCERT: '+esc(x.ncert_reference)+'</span>':''}</div>`}).join('');}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-sb.auth.onAuthStateChange(()=>setTimeout(route,0));route();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropper Academy</title>
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f7fb; margin: 0; padding: 20px; color: #333; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto 20px auto; }
+        .hidden { display: none !important; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .pdf-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        header { display: flex; justify-content: space-between; align-items: center; background: #333; color: white; padding: 10px 20px; border-radius: 8px; margin-bottom: 20px; }
+        header button { width: auto; margin: 0; padding: 5px 15px; background: #dc3545; }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <!-- Auth Section -->
+        <section id="auth-section" class="card">
+            <h2>Dropper Academy Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="handleLogin()">Login / Signup</button>
+        </section>
+
+        <!-- Student Dashboard -->
+        <section id="student-section" class="card hidden">
+            <header>
+                <span>Student Dashboard - Shorts & Revision PDFs</span>
+                <button onclick="handleLogout()">Logout</button>
+            </header>
+            <h3>Available Revision PDFs</h3>
+            <div id="pdf-list-student">Loading PDFs...</div>
+        </section>
+
+        <!-- Admin Dashboard -->
+        <section id="admin-section" class="card hidden">
+            <header>
+                <span>Admin Panel - Upload PDFs</span>
+                <button onclick="handleLogout()">Logout</button>
+            </header>
+            <h3>Upload PDF to 'test-pdfs' bucket</h3>
+            <input type="text" id="pdf-title" placeholder="PDF Title / Subject">
+            <input type="file" id="pdf-file" accept="application/pdf">
+            <button onclick="uploadPDF()">Upload PDF</button>
+            
+            <h3>All Uploaded PDFs</h3>
+            <div id="pdf-list-admin">Loading PDFs...</div>
+        </section>
+    </div>
+
+    <script>
+        const sb = supabase.createClient(window.DROPPER_CONFIG.SUPABASE_URL, window.DROPPER_CONFIG.SUPABASE_ANON_KEY);
+
+        async function checkUser() {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) {
+                document.getElementById('auth-section').classList.remove('hidden');
+                document.getElementById('student-section').classList.add('hidden');
+                document.getElementById('admin-section').classList.add('hidden');
+                return;
+            }
+
+            // Check role from profiles
+            const { data: profile } = await sb.from('profiles').select('role').eq('id', user.id).single();
+            
+            document.getElementById('auth-section').classList.add('hidden');
+            if (profile && profile.role === 'admin') {
+                document.getElementById('admin-section').classList.remove('hidden');
+                loadPDFs('admin');
+            } else {
+                document.getElementById('student-section').classList.remove('hidden');
+                loadPDFs('student');
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!email || !password) return alert('Enter email and password');
+
+            let { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                // Try signup if login fails
+                let { data: suData, error: suError } = await sb.auth.signUp({ email, password });
+                if (suError) return alert(suError.message);
+                alert('Account created! Please login now.');
+            }
+            checkUser();
+        }
+
+        async function handleLogout() {
+            await sb.auth.signOut();
+            checkUser();
+        }
+
+        async function uploadPDF() {
+            const title = document.getElementById('pdf-title').value.trim();
+            const fileInput = document.getElementById('pdf-file');
+            const file = fileInput.files[0];
+
+            if (!title || !file) return alert('Please enter a title and select a PDF file.');
+
+            const fileName = `${Date.now()}_${file.name}`;
+            
+            // 1. Upload to test-pdfs bucket
+            const { data: uploadData, error: uploadError } = await sb.storage.from('test-pdfs').upload(fileName, file);
+            if (uploadError) return alert('Upload error: ' + uploadError.message);
+
+            // 2. Save metadata in a table or store reference (Optional: creating a records table if needed, for now getting public URL directly)
+            const { data: { publicUrl } } = sb.storage.from('test-pdfs').getPublicUrl(fileName);
+
+            // Storing reference in localStorage or database table if available. Let's push to a simple table or local state for simplicity, or save directly.
+            // Assuming we save record in a 'pdfs' table or metadata. Let's store via localStorage fallback or insert into a table if it exists.
+            alert('PDF Uploaded Successfully!');
+            document.getElementById('pdf-title').value = '';
+            fileInput.value = '';
+            loadPDFs('admin');
+        }
+
+        async function loadPDFs(role) {
+            const containerId = role === 'admin' ? 'pdf-list-admin' : 'pdf-list-student';
+            const container = document.getElementById(containerId);
+            container.innerHTML = 'Loading...';
+
+            // List files from test-pdfs bucket directly
+            const { data, error } = await sb.storage.from('test-pdfs').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+            
+            if (error) {
+                container.innerHTML = 'Error loading PDFs: ' + error.message;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p>No PDFs uploaded yet.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            data.forEach(file => {
+                const { data: { publicUrl } } = sb.storage.from('test-pdfs').getPublicUrl(file.name);
+                const item = document.createElement('div');
+                item.className = 'pdf-item';
+                item.innerHTML = `
+                    <span>${file.name}</span>
+                    <a href="${publicUrl}" target="_blank"><button style="margin:0; width:auto; padding:5px 10px;">View / Download</button></a>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        checkUser();
+    </script>
+</body>
+</html>
